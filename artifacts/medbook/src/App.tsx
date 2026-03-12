@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,21 +22,24 @@ import DoctorProfile from "@/pages/doctor/profile";
 
 const queryClient = new QueryClient();
 
-// Protected Route Wrapper
+// Protected Route Wrapper — uses Redirect (declarative) instead of setLocation (imperative during render)
 function ProtectedRoute({ component: Component, allowedRole }: { component: any, allowedRole?: string }) {
   const { isAuthenticated, role, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    setLocation(allowedRole === 'doctor' ? "/doctor/login" : "/patient/login");
-    return null;
+    return <Redirect to={allowedRole === 'doctor' ? "/doctor/login" : "/patient/login"} />;
   }
 
   if (allowedRole && role !== allowedRole) {
-    setLocation("/");
-    return null;
+    return <Redirect to="/" />;
   }
 
   return <Component />;
