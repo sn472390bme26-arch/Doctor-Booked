@@ -4,7 +4,7 @@ import {
   usersTable, doctorsTable, hospitalsTable,
   sessionsTable, bookingsTable, tokensTable
 } from "@workspace/db/schema";
-import { eq, desc, count, and } from "drizzle-orm";
+import { eq, desc, count, and, inArray } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middlewares/auth";
 
@@ -189,6 +189,110 @@ router.delete("/sessions/:id", adminAuth, async (req, res) => {
       .set({ isCancelled: true, status: "cancelled" })
       .where(eq(sessionsTable.id, id));
     res.json({ success: true, message: "Session cancelled by admin" });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── POST /admin/seed-today ────────────────────────────────────────────────────
+router.post("/seed-today", adminAuth, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const doctors = await db.select().from(doctorsTable).where(eq(doctorsTable.isAvailable, true));
+
+    const existingSessions = await db.select()
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.date, today), eq(sessionsTable.isCancelled, false)));
+    const doctorsWithSession = new Set(existingSessions.map(s => s.doctorId));
+
+    const patients = await db.select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable).where(eq(usersTable.role, "patient"));
+
+    let created = 0;
+    for (const doctor of doctors) {
+      if (doctorsWithSession.has(doctor.id)) continue;
+
+      const sessionTypes = (doctor.sessionTypes as any[]) || [];
+      const activeType = sessionTypes.find((st: any) => st.isActive) || { type: "morning", startTime: "09:00", endTime: "12:00" };
+
+      const totalTokens = doctor.tokensPerSession || 15;
+
+      const [session] = await db.insert(sessionsTable).values({
+        doctorId: doctor.id,
+        date: today,
+        sessionType: activeType.type,
+        startTime: activeType.startTime,
+        endTime: activeType.endTime,
+        totalTokens,
+        bookedTokens: 0,
+        status: "active",
+        isCancelled: false,
+      }).returning();
+
+      const completedCount = Math.floor(totalTokens / 3);
+      const ongoingCount = 1;
+      const bookedCount = Math.min(Math.floor(totalTokens / 3), totalTokens - completedCount - ongoingCount);
+      const availableCount = totalTokens - completedCount - ongoingCount - bookedCount;
+
+      const tokenValues: any[] = [];
+      let tokenNum = 1;
+
+      for (let i = 0; i < completedCount; i++, tokenNum++) {
+        tokenValues.push({
+          sessionId: session.id,
+          tokenNumber: tokenNum,
+          status: "completed",
+          isBuffer: false,
+          patientName: patients.length > 0 ? patients[i % patients.length].name : `Patient ${tokenNum}`,
+          notificationSent: true,
+        });
+      }
+
+      tokenValues.push({
+        sessionId: session.id,
+        tokenNumber: tokenNum,
+        status: "ongoing",
+        isBuffer: false,
+        patientName: patients.length > 0 ? patients[completedCount % patients.length].name : `Patient ${tokenNum}`,
+        notificationSent: true,
+      });
+      tokenNum++;
+
+      for (let i = 0; i < bookedCount; i++, tokenNum++) {
+        const isNext = i === 0;
+        tokenValues.push({
+          sessionId: session.id,
+          tokenNumber: tokenNum,
+          status: "booked",
+          isBuffer: false,
+          patientName: patients.length > 0 ? patients[(completedCount + 1 + i) % patients.length].name : `Patient ${tokenNum}`,
+          notificationSent: isNext,
+        });
+      }
+
+      for (let i = 0; i < availableCount; i++, tokenNum++) {
+        tokenValues.push({
+          sessionId: session.id,
+          tokenNumber: tokenNum,
+          status: "available",
+          isBuffer: false,
+          notificationSent: false,
+        });
+      }
+
+      if (tokenValues.length > 0) {
+        await db.insert(tokensTable).values(tokenValues);
+      }
+
+      await db.update(sessionsTable)
+        .set({ bookedTokens: completedCount + ongoingCount + bookedCount })
+        .where(eq(sessionsTable.id, session.id));
+
+      created++;
+    }
+
+    res.json({ success: true, created, message: `Created ${created} session(s) with simulated tokens for today.` });
   } catch (err: any) {
     res.status(500).json({ error: "server_error", message: err.message });
   }

@@ -2,13 +2,25 @@ import { useRoute, Link } from "wouter";
 import { useGetSession, useGetSessionTokens, useGetMyBookings } from "@workspace/api-client-react";
 import {
   Activity, BellRing, Clock, User, MapPin, ChevronLeft,
-  CheckCircle2, AlertCircle, Hourglass, Users
+  CheckCircle2, AlertCircle, Hourglass, Users, Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TokenTracker() {
   const [, params] = useRoute("/patient/tracker/:id");
   const sessionId = parseInt(params?.id || "0");
+  const { toast } = useToast();
+
+  const shareQueueLink = () => {
+    const base = window.location.origin + import.meta.env.BASE_URL.replace(/\/$/, "");
+    const url = `${base}/live/${sessionId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: "Link Copied!", description: "Share this with anyone to see the live queue." });
+    }).catch(() => {
+      toast({ title: "Copy Failed", description: url, variant: "destructive" });
+    });
+  };
 
   // Session details - polls every 8s to catch status changes
   const { data: sessionData } = useGetSession(sessionId, {
@@ -59,6 +71,12 @@ export default function TokenTracker() {
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> LIVE
               </span>
               <span className="text-xs text-muted-foreground">Updates every 4 seconds</span>
+              <button
+                onClick={shareQueueLink}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share Queue
+              </button>
             </div>
             <h1 className="text-2xl font-bold font-display">Live Queue Tracker</h1>
             {session && (

@@ -21,6 +21,7 @@ import DoctorDashboard from "@/pages/doctor/dashboard";
 import DoctorProfile from "@/pages/doctor/profile";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
+import LiveQueue from "@/pages/live-queue";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any,
 function AppRoutes() {
   const [location] = useLocation();
   const isAdminRoute = location.startsWith("/admin");
+  const isLiveRoute = location.startsWith("/live");
 
   if (isAdminRoute) {
     return (
@@ -59,6 +61,15 @@ function AppRoutes() {
         <Route path="/admin">
           {() => <Redirect to="/admin/login" />}
         </Route>
+      </Switch>
+    );
+  }
+
+  if (isLiveRoute) {
+    return (
+      <Switch>
+        <Route path="/live/:sessionId" component={LiveQueue} />
+        <Route component={NotFound} />
       </Switch>
     );
   }

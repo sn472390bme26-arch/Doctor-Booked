@@ -210,14 +210,24 @@ export default function DoctorDashboard() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">
-          <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground font-medium">No active sessions for today.</p>
+        <div className="bg-card rounded-3xl border border-dashed border-border p-8 text-center">
+          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <CalendarPlus className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold font-display mb-1">No Sessions Today</h3>
+          <p className="text-muted-foreground text-sm mb-2">
+            You don't have any active sessions scheduled for today.
+          </p>
+          {upcomingSessions.length > 0 && (
+            <p className="text-sm text-primary font-medium mb-4">
+              You have {upcomingSessions.length} upcoming session{upcomingSessions.length > 1 ? "s" : ""} scheduled.
+            </p>
+          )}
           <button
             onClick={() => setNewSessionModal(true)}
-            className="mt-4 px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl text-sm hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/20"
+            className="mt-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-2xl text-sm hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/20 inline-flex items-center gap-2"
           >
-            Create Today's Session
+            <CalendarPlus className="w-4 h-4" /> Create Today's Session
           </button>
         </div>
       )}

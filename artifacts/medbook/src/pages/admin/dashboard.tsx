@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Hospital, Users, Stethoscope, CalendarDays, BookOpen,
   LogOut, ShieldCheck, RefreshCw, ToggleLeft, ToggleRight,
-  XCircle, Search, ChevronDown, ChevronRight
+  XCircle, Search, ChevronDown, ChevronRight, Zap
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) setLocation("/admin/login");
@@ -95,6 +96,31 @@ export default function AdminDashboard() {
       toast({ title: "Error", description: "Failed to cancel session", variant: "destructive" });
     }
   };
+
+  const seedToday = async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/seed-today`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to seed");
+      const data = await res.json();
+      toast({ title: "Sessions Seeded", description: data.message });
+      stats.reload();
+      sessions.reload();
+    } catch {
+      toast({ title: "Error", description: "Failed to seed today's sessions", variant: "destructive" });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const todaySessionsExist = sessions.data?.some(s => {
+    const sessionDate = s.date?.split("T")[0] || s.date;
+    const todayStr = new Date().toISOString().split("T")[0];
+    return sessionDate === todayStr && !s.isCancelled;
+  });
 
   const filtered = <T extends any[]>(arr: T | null, keys: string[]): T =>
     (!arr ? [] : search.trim()
@@ -184,6 +210,27 @@ export default function AdminDashboard() {
                         <div className="text-slate-400 text-sm mt-0.5">{s.label}</div>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 rounded-2xl p-5 mt-4 flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-white font-semibold flex items-center gap-2 mb-1">
+                        <Zap className="w-4 h-4 text-primary" /> Seed Today's Sessions
+                      </h3>
+                      <p className="text-slate-400 text-sm">Create one session per doctor with simulated tokens (completed, ongoing, booked) for testing the live queue.</p>
+                    </div>
+                    <button
+                      onClick={seedToday}
+                      disabled={seeding || !!todaySessionsExist}
+                      className={`shrink-0 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                        todaySessionsExist
+                          ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                          : "bg-primary text-white hover:-translate-y-0.5 shadow-lg shadow-primary/30"
+                      }`}
+                    >
+                      {seeding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      {seeding ? "Seeding..." : todaySessionsExist ? "Already Seeded" : "Seed Now"}
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
