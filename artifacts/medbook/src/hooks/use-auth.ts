@@ -9,11 +9,10 @@ export function useAuth() {
 
   const { data: user, isLoading, isFetching, error, refetch } = useGetMe({
     query: {
-      queryKey: [] as any,
       enabled: !!token,
       retry: false,
       staleTime: 30_000,
-    }
+    } as any
   });
 
   const login = (newToken: string, newRole: string) => {

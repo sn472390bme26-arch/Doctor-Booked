@@ -9,7 +9,7 @@ function DoctorCard({ doc, index }: { doc: any; index: number }) {
 
   // Fetch live sessions for this doctor - polls every 10s to catch newly created sessions
   const { data: sessions = [] } = useGetDoctorSessions(doc.id, undefined, {
-    query: { queryKey: [], enabled: !!doc.id, refetchInterval: 10000 } as any,
+    query: { enabled: !!doc.id, refetchInterval: 10000 } as any,
   });
 
   const todaySessions = sessions.filter(s => s.date === todayStr && !s.isCancelled && s.status !== "cancelled" && s.status !== "closed");
@@ -105,8 +105,8 @@ export default function HospitalDetail() {
   const [, params] = useRoute("/patient/hospitals/:id");
   const id = parseInt(params?.id || "0");
 
-  const { data: hospital, isLoading: loadingHosp } = useGetHospital(id, { query: { queryKey: [], enabled: !!id } as any });
-  const { data: doctors, isLoading: loadingDocs } = useGetHospitalDoctors(id, { query: { queryKey: [], enabled: !!id } as any });
+  const { data: hospital, isLoading: loadingHosp } = useGetHospital(id, { query: { enabled: !!id } as any });
+  const { data: doctors, isLoading: loadingDocs } = useGetHospitalDoctors(id, { query: { enabled: !!id } as any });
 
   if (loadingHosp) return <div className="p-12 text-center text-muted-foreground">Loading hospital details...</div>;
   if (!hospital) return <div className="p-12 text-center text-destructive">Hospital not found</div>;

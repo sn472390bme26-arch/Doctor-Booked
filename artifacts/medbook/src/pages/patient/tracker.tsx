@@ -12,17 +12,17 @@ export default function TokenTracker() {
 
   // Session details - polls every 8s to catch status changes
   const { data: sessionData } = useGetSession(sessionId, {
-    query: { queryKey: [], enabled: !!sessionId, refetchInterval: 8000 } as any,
+    query: { enabled: !!sessionId, refetchInterval: 8000 } as any,
   });
   const session = sessionData?.session;
 
   // Token grid - polls every 4s
   const { data: tokens = [], isLoading } = useGetSessionTokens(sessionId, {
-    query: { queryKey: [], enabled: !!sessionId, refetchInterval: 4000 } as any,
+    query: { enabled: !!sessionId, refetchInterval: 4000 } as any,
   });
 
   // Find MY booking
-  const { data: bookings } = useGetMyBookings({ query: { queryKey: [], refetchInterval: 8000 } as any });
+  const { data: bookings } = useGetMyBookings({ query: { refetchInterval: 8000 } as any });
   const myBooking = bookings?.find(b => b.sessionId === sessionId);
   const myTokenNumber = myBooking?.tokenNumber;
 

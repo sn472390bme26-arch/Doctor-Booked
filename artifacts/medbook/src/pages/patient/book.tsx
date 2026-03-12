@@ -18,7 +18,7 @@ export default function BookDoctor() {
 
   // Fetch sessions for this doctor
   const { data: sessions, isLoading } = useGetDoctorSessions(doctorId, undefined, {
-    query: { queryKey: [] as any, enabled: !!doctorId, refetchInterval: 8000 }
+    query: { enabled: !!doctorId, refetchInterval: 8000 }
   });
 
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);

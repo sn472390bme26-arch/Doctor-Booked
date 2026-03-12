@@ -16,7 +16,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 export default function MyBookings() {
-  const { data: bookings, isLoading } = useGetMyBookings({ query: { queryKey: [], refetchInterval: 10000 } as any });
+  const { data: bookings, isLoading } = useGetMyBookings({ query: { refetchInterval: 10000 } as any });
 
   if (isLoading) {
     return (
