@@ -262,6 +262,98 @@ router.get("/bookings", adminAuth, async (req, res) => {
   }
 });
 
+// ─── DELETE /admin/doctors/:id ─────────────────────────────────────────────────
+router.delete("/doctors/:id", adminAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [doctor] = await db.select().from(doctorsTable).where(eq(doctorsTable.id, id)).limit(1);
+    if (!doctor) {
+      return res.status(404).json({ error: "not_found", message: "Doctor not found" });
+    }
+    // Delete all sessions + tokens belonging to this doctor
+    const doctorSessions = await db.select({ id: sessionsTable.id }).from(sessionsTable).where(eq(sessionsTable.doctorId, id));
+    const sessionIds = doctorSessions.map(s => s.id);
+    if (sessionIds.length > 0) {
+      await db.delete(tokensTable).where(inArray(tokensTable.sessionId, sessionIds));
+      await db.delete(sessionsTable).where(eq(sessionsTable.doctorId, id));
+    }
+    // Delete bookings for this doctor
+    await db.delete(bookingsTable).where(eq(bookingsTable.doctorId, id));
+    // Delete doctor record
+    await db.delete(doctorsTable).where(eq(doctorsTable.id, id));
+    // Delete associated user record (if role is "doctor")
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, doctor.userId)).limit(1);
+    if (user && user.role === "doctor") {
+      await db.delete(usersTable).where(eq(usersTable.id, doctor.userId));
+    }
+    res.json({ success: true, message: "Doctor deleted successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── DELETE /admin/hospitals/:id ───────────────────────────────────────────────
+router.delete("/hospitals/:id", adminAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [hospital] = await db.select().from(hospitalsTable).where(eq(hospitalsTable.id, id)).limit(1);
+    if (!hospital) {
+      return res.status(404).json({ error: "not_found", message: "Hospital not found" });
+    }
+    // Check for associated doctors
+    const associatedDoctors = await db.select({ id: doctorsTable.id }).from(doctorsTable).where(eq(doctorsTable.hospitalId, id));
+    if (associatedDoctors.length > 0) {
+      return res.status(409).json({
+        error: "conflict",
+        message: `Cannot delete hospital — it has ${associatedDoctors.length} doctor(s) assigned. Please remove or reassign all doctors first.`,
+      });
+    }
+    await db.delete(hospitalsTable).where(eq(hospitalsTable.id, id));
+    res.json({ success: true, message: "Hospital deleted successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── POST /admin/hospitals/:id/photos ──────────────────────────────────────────
+router.post("/hospitals/:id/photos", adminAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { photoUrl } = req.body;
+    if (!photoUrl) {
+      return res.status(400).json({ error: "bad_request", message: "photoUrl is required" });
+    }
+    const [hospital] = await db.select().from(hospitalsTable).where(eq(hospitalsTable.id, id)).limit(1);
+    if (!hospital) {
+      return res.status(404).json({ error: "not_found", message: "Hospital not found" });
+    }
+    const current = (hospital.photos as string[]) || [];
+    const updated = [...current, photoUrl];
+    await db.update(hospitalsTable).set({ photos: updated }).where(eq(hospitalsTable.id, id));
+    res.json({ success: true, photos: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── DELETE /admin/hospitals/:id/photos/:index ─────────────────────────────────
+router.delete("/hospitals/:id/photos/:index", adminAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const index = parseInt(req.params.index);
+    const [hospital] = await db.select().from(hospitalsTable).where(eq(hospitalsTable.id, id)).limit(1);
+    if (!hospital) {
+      return res.status(404).json({ error: "not_found", message: "Hospital not found" });
+    }
+    const current = (hospital.photos as string[]) || [];
+    const updated = current.filter((_, i) => i !== index);
+    await db.update(hospitalsTable).set({ photos: updated }).where(eq(hospitalsTable.id, id));
+    res.json({ success: true, photos: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
 // ─── DELETE /admin/sessions/:id ────────────────────────────────────────────────
 router.delete("/sessions/:id", adminAuth, async (req, res) => {
   try {

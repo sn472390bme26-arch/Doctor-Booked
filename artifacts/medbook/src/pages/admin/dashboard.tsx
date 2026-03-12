@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import {
   Hospital, Users, Stethoscope, CalendarDays, BookOpen,
   LogOut, ShieldCheck, RefreshCw, ToggleLeft, ToggleRight,
   XCircle, Search, ChevronDown, ChevronRight, Zap,
-  Plus, X, Copy, CheckCircle2, Phone, KeyRound
+  Plus, X, Copy, CheckCircle2, Phone, KeyRound,
+  Trash2, Images, Upload, ImageIcon
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -104,6 +105,10 @@ export default function AdminDashboard() {
   const [doctorForm, setDoctorForm] = useState({ name: "", phone: "", hospitalId: "", specialty: "", consultationFee: "500", tokensPerSession: "20" });
   const [hospitalForm, setHospitalForm] = useState({ name: "", location: "", address: "", phone: "" });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [photosModal, setPhotosModal] = useState<{ hospital: any } | null>(null);
+  const [uploadingHospitalPhoto, setUploadingHospitalPhoto] = useState(false);
+  const hospitalPhotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated) setLocation("/admin/login");
@@ -162,6 +167,100 @@ export default function AdminDashboard() {
       toast({ title: "Error", description: "Failed to seed today's sessions", variant: "destructive" });
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const deleteDoctor = async (doctor: any) => {
+    if (!confirm(`Delete Dr. ${doctor.name} entirely? This will also remove all their sessions, tokens, and bookings. This cannot be undone.`)) return;
+    setDeletingId(doctor.id);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/doctors/${doctor.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete doctor");
+      toast({ title: "Doctor Deleted", description: `Dr. ${doctor.name} has been removed.` });
+      doctors.reload();
+      stats.reload();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const deleteHospital = async (hospital: any) => {
+    if (!confirm(`Delete ${hospital.name}? This action cannot be undone.`)) return;
+    setDeletingId(hospital.id);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/hospitals/${hospital.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete hospital");
+      toast({ title: "Hospital Deleted", description: `${hospital.name} has been removed.` });
+      hospitals.reload();
+      stats.reload();
+    } catch (e: any) {
+      toast({ title: "Cannot Delete", description: e.message, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const addHospitalPhoto = async (hospitalId: number, file: File) => {
+    setUploadingHospitalPhoto(true);
+    try {
+      const urlRes = await fetch(`${API_BASE}/api/storage/uploads/request-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!urlRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const uploadRes = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      const photoUrl = `/api/storage${objectPath}`;
+      const res = await fetch(`${API_BASE}/api/admin/hospitals/${hospitalId}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ photoUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to save photo");
+
+      toast({ title: "Photo Added", description: "Hospital photo has been uploaded." });
+      hospitals.reload();
+      setPhotosModal(prev => prev ? { hospital: { ...prev.hospital, photos: data.photos } } : null);
+    } catch (e: any) {
+      toast({ title: "Upload Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingHospitalPhoto(false);
+      if (hospitalPhotoInputRef.current) hospitalPhotoInputRef.current.value = "";
+    }
+  };
+
+  const removeHospitalPhoto = async (hospitalId: number, index: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/hospitals/${hospitalId}/photos/${index}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to remove photo");
+      toast({ title: "Photo Removed" });
+      hospitals.reload();
+      setPhotosModal(prev => prev ? { hospital: { ...prev.hospital, photos: data.photos } } : null);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     }
   };
 
@@ -408,6 +507,8 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">City / Location</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Doctors</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Phone</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Photos</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -419,10 +520,29 @@ export default function AdminDashboard() {
                         <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">{h.doctorCount}</span>
                       </td>
                       <td className="py-3 px-5 text-slate-400 text-sm">{h.phone || "—"}</td>
+                      <td className="py-3 px-5">
+                        <button
+                          onClick={() => setPhotosModal({ hospital: h })}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 font-medium transition-all"
+                        >
+                          <Images className="w-3.5 h-3.5" />
+                          {(h.photos?.length || 0)} photo{(h.photos?.length || 0) !== 1 ? "s" : ""}
+                        </button>
+                      </td>
+                      <td className="py-3 px-5">
+                        <button
+                          onClick={() => deleteHospital(h)}
+                          disabled={deletingId === h.id}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 font-medium transition-all disabled:opacity-50"
+                        >
+                          {deletingId === h.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {(hospitals.data?.length ?? 0) === 0 && (
-                    <tr><td colSpan={4} className="text-center py-10 text-slate-500">No hospitals found. Click "Add Hospital" to create one.</td></tr>
+                    <tr><td colSpan={6} className="text-center py-10 text-slate-500">No hospitals found. Click "Add Hospital" to create one.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -466,17 +586,27 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="py-3 px-5">
-                        <button
-                          onClick={() => toggleDoctor(d)}
-                          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                            d.isAvailable
-                              ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                              : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                          }`}
-                        >
-                          {d.isAvailable ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
-                          {d.isAvailable ? "Disable" : "Enable"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleDoctor(d)}
+                            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                              d.isAvailable
+                                ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                                : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                            }`}
+                          >
+                            {d.isAvailable ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                            {d.isAvailable ? "Disable" : "Enable"}
+                          </button>
+                          <button
+                            onClick={() => deleteDoctor(d)}
+                            disabled={deletingId === d.id}
+                            title="Delete doctor entirely"
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                          >
+                            {deletingId === d.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -713,6 +843,75 @@ export default function AdminDashboard() {
             {saving ? "Creating..." : "Create Hospital"}
           </button>
         </form>
+      </Modal>
+
+      {/* ─── Hospital Photos Modal ─── */}
+      <Modal
+        open={!!photosModal}
+        onClose={() => setPhotosModal(null)}
+        title={`Manage Photos — ${photosModal?.hospital?.name || ""}`}
+      >
+        {photosModal && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <p className="text-slate-400 text-sm">Upload photos that will be shown on the hospital page.</p>
+              <button
+                type="button"
+                onClick={() => hospitalPhotoInputRef.current?.click()}
+                disabled={uploadingHospitalPhoto}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:-translate-y-0.5 transition-all shadow-md shadow-primary/30 disabled:opacity-60"
+              >
+                {uploadingHospitalPhoto ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploadingHospitalPhoto ? "Uploading..." : "Upload Photo"}
+              </button>
+              <input
+                ref={hospitalPhotoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) addHospitalPhoto(photosModal.hospital.id, file);
+                }}
+              />
+            </div>
+
+            {(photosModal.hospital.photos?.length || 0) === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-white/10 rounded-2xl text-slate-500">
+                <ImageIcon className="w-10 h-10 mb-3 opacity-30" />
+                <p className="text-sm">No photos yet. Click "Upload Photo" to add the first one.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {photosModal.hospital.photos.map((url: string, idx: number) => (
+                  <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video bg-white/5">
+                    <img
+                      src={url.startsWith("/api/") ? `${API_BASE}${url}` : url}
+                      alt={`Hospital photo ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        onClick={() => removeHospitalPhoto(photosModal.hospital.id, idx)}
+                        className="p-2 bg-red-500 rounded-full text-white hover:bg-red-600 transition-colors"
+                        title="Remove photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setPhotosModal(null)}
+              className="w-full py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-xl hover:bg-white/10 transition-all text-sm font-medium"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );

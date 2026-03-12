@@ -7,6 +7,7 @@ import sessionsRouter from "./sessions";
 import bookingsRouter from "./bookings";
 import tokensRouter from "./tokens";
 import adminRouter from "./admin";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/sessions", sessionsRouter);
 router.use("/bookings", bookingsRouter);
 router.use("/tokens", tokensRouter);
 router.use("/admin", adminRouter);
+router.use(storageRouter);
 
 export default router;

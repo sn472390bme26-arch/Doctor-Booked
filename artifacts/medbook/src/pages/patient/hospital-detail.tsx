@@ -135,6 +135,23 @@ export default function HospitalDetail() {
         </div>
       </div>
 
+      {((hospital as any).photos?.length > 0) && (
+        <div>
+          <h2 className="text-xl font-bold font-display mb-4">Gallery</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {((hospital as any).photos as string[]).map((url, i) => (
+              <div key={i} className="rounded-2xl overflow-hidden aspect-video bg-muted">
+                <img
+                  src={url.startsWith("/api/") ? `${import.meta.env.BASE_URL.replace(/\/$/, "")}${url}` : url}
+                  alt={`${hospital.name} photo ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold font-display flex items-center gap-3">

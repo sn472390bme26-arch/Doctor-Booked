@@ -9,6 +9,7 @@ export const hospitalsTable = pgTable("hospitals", {
   address: text("address").notNull(),
   phone: text("phone"),
   imageUrl: text("image_url"),
+  photos: text("photos").array().default([]),
   specialties: text("specialties").array().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
