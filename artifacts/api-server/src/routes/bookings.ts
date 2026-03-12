@@ -51,7 +51,7 @@ router.post("/", authenticate, async (req: any, res) => {
 
     const { sessionId, chiefComplaint } = z.object({
       sessionId: z.number().int(),
-      chiefComplaint: z.string().optional(),
+      chiefComplaint: z.string().nullable().optional(),
     }).parse(req.body);
 
     const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
