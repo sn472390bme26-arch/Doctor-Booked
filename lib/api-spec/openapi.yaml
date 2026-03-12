@@ -1,22 +1,32 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MedBook - Doctor Appointment Booking API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: hospitals
+    description: Hospital operations
+  - name: doctors
+    description: Doctor operations
+  - name: sessions
+    description: Session operations
+  - name: bookings
+    description: Booking operations
+  - name: tokens
+    description: Token management operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +34,443 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/patient/login:
+    post:
+      operationId: patientLogin
+      tags: [auth]
+      summary: Patient login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/doctor/login:
+    post:
+      operationId: doctorLogin
+      tags: [auth]
+      summary: Doctor login with unique code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoctorLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /hospitals:
+    get:
+      operationId: getHospitals
+      tags: [hospitals]
+      summary: Get all hospitals
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of hospitals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hospital"
+
+    post:
+      operationId: createHospital
+      tags: [hospitals]
+      summary: Create a hospital (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHospitalRequest"
+      responses:
+        "201":
+          description: Hospital created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hospital"
+
+  /hospitals/{hospitalId}:
+    get:
+      operationId: getHospital
+      tags: [hospitals]
+      summary: Get hospital by ID
+      parameters:
+        - name: hospitalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Hospital details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hospital"
+
+  /hospitals/{hospitalId}/doctors:
+    get:
+      operationId: getHospitalDoctors
+      tags: [hospitals]
+      summary: Get doctors at a hospital
+      parameters:
+        - name: hospitalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Doctors at hospital
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Doctor"
+
+  /doctors/me:
+    get:
+      operationId: getDoctorProfile
+      tags: [doctors]
+      summary: Get doctor's own profile
+      responses:
+        "200":
+          description: Doctor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+
+    put:
+      operationId: updateDoctorProfile
+      tags: [doctors]
+      summary: Update doctor profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDoctorProfileRequest"
+      responses:
+        "200":
+          description: Updated doctor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+
+  /doctors/{doctorId}/sessions:
+    get:
+      operationId: getDoctorSessions
+      tags: [sessions]
+      summary: Get doctor's sessions for date range
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sessions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a new session (doctor only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get session details with token status
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session with tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionWithTokens"
+
+    delete:
+      operationId: cancelSession
+      tags: [sessions]
+      summary: Cancel a session (doctor only)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /sessions/{sessionId}/close:
+    post:
+      operationId: closeSession
+      tags: [sessions]
+      summary: Close session and trigger refunds for unvisited tokens
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseSessionResponse"
+
+  /bookings:
+    get:
+      operationId: getMyBookings
+      tags: [bookings]
+      summary: Get patient's bookings
+      responses:
+        "200":
+          description: Patient bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Book a token for a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          description: Session full or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/{bookingId}/pay:
+    post:
+      operationId: processPayment
+      tags: [bookings]
+      summary: Process payment for a booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+      responses:
+        "200":
+          description: Payment processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+
+  /tokens/{tokenId}/status:
+    put:
+      operationId: updateTokenStatus
+      tags: [tokens]
+      summary: Update token status (doctor only - mark ongoing/completed)
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTokenStatusRequest"
+      responses:
+        "200":
+          description: Token status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenStatusResponse"
+
+  /sessions/{sessionId}/tokens:
+    get:
+      operationId: getSessionTokens
+      tags: [tokens]
+      summary: Get all tokens for a session (real-time)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Token"
+
+  /sessions/{sessionId}/buffer-slots:
+    post:
+      operationId: activateBufferSlot
+      tags: [tokens]
+      summary: Activate a buffer slot (doctor only - for walk-in patients)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivateBufferSlotRequest"
+      responses:
+        "200":
+          description: Buffer slot activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +481,439 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    PatientLoginRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [email, phone, google]
+        identifier:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+      required:
+        - method
+        - identifier
+
+    DoctorLoginRequest:
+      type: object
+      properties:
+        loginCode:
+          type: string
+      required:
+        - loginCode
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/CurrentUser"
+      required:
+        - token
+        - user
+
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [patient, doctor]
+        doctorId:
+          type: integer
+        patientId:
+          type: integer
+      required:
+        - id
+        - name
+        - role
+
+    Hospital:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        imageUrl:
+          type: string
+        specialties:
+          type: array
+          items:
+            type: string
+        doctorCount:
+          type: integer
+      required:
+        - id
+        - name
+        - location
+        - address
+
+    CreateHospitalRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        imageUrl:
+          type: string
+        specialties:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - location
+        - address
+
+    Doctor:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        hospitalId:
+          type: integer
+        name:
+          type: string
+        specialty:
+          type: string
+        photoUrl:
+          type: string
+        bio:
+          type: string
+        consultationFee:
+          type: number
+        tokensPerSession:
+          type: integer
+        sessionTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionType"
+        loginCode:
+          type: string
+        isAvailable:
+          type: boolean
+      required:
+        - id
+        - name
+        - specialty
+        - consultationFee
+        - tokensPerSession
+
+    SessionType:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [morning, afternoon, evening]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        isActive:
+          type: boolean
+      required:
+        - type
+        - startTime
+        - endTime
+        - isActive
+
+    UpdateDoctorProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        specialty:
+          type: string
+        photoUrl:
+          type: string
+        bio:
+          type: string
+        consultationFee:
+          type: number
+        tokensPerSession:
+          type: integer
+        sessionTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionType"
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+        doctorId:
+          type: integer
+        doctorName:
+          type: string
+        hospitalId:
+          type: integer
+        hospitalName:
+          type: string
+        date:
+          type: string
+          format: date
+        sessionType:
+          type: string
+          enum: [morning, afternoon, evening]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        totalTokens:
+          type: integer
+        bookedTokens:
+          type: integer
+        status:
+          type: string
+          enum: [upcoming, active, closed, cancelled]
+        isCancelled:
+          type: boolean
+        consultationFee:
+          type: number
+      required:
+        - id
+        - doctorId
+        - date
+        - sessionType
+        - startTime
+        - endTime
+        - totalTokens
+        - bookedTokens
+        - status
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        sessionType:
+          type: string
+          enum: [morning, afternoon, evening]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        totalTokens:
+          type: integer
+      required:
+        - date
+        - sessionType
+        - startTime
+        - endTime
+        - totalTokens
+
+    Token:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        tokenNumber:
+          type: integer
+        status:
+          type: string
+          enum: [available, booked, ongoing, completed, skipped, unvisited]
+        isBuffer:
+          type: boolean
+        patientName:
+          type: string
+        patientPhone:
+          type: string
+        bookingId:
+          type: integer
+        notificationSent:
+          type: boolean
+      required:
+        - id
+        - sessionId
+        - tokenNumber
+        - status
+        - isBuffer
+
+    SessionWithTokens:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/Session"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Token"
+      required:
+        - session
+        - tokens
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        sessionId:
+          type: integer
+        tokenNumber:
+          type: integer
+        status:
+          type: string
+          enum: [pending_payment, confirmed, completed, cancelled, refunded, unvisited]
+        paymentStatus:
+          type: string
+          enum: [pending, paid, refunded]
+        amountPaid:
+          type: number
+        doctorName:
+          type: string
+        hospitalName:
+          type: string
+        specialty:
+          type: string
+        date:
+          type: string
+          format: date
+        sessionType:
+          type: string
+          enum: [morning, afternoon, evening]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - tokenNumber
+        - status
+        - paymentStatus
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+      required:
+        - sessionId
+
+    PaymentRequest:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [card, upi, netbanking, wallet]
+        amount:
+          type: number
+      required:
+        - method
+        - amount
+
+    PaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        transactionId:
+          type: string
+        booking:
+          $ref: "#/components/schemas/Booking"
+      required:
+        - success
+        - transactionId
+        - booking
+
+    UpdateTokenStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ongoing, completed, skipped]
+      required:
+        - status
+
+    TokenStatusResponse:
+      type: object
+      properties:
+        token:
+          $ref: "#/components/schemas/Token"
+        nextTokenNotified:
+          type: integer
+        message:
+          type: string
+      required:
+        - token
+
+    ActivateBufferSlotRequest:
+      type: object
+      properties:
+        slotGroupIndex:
+          type: integer
+        patientName:
+          type: string
+        patientPhone:
+          type: string
+      required:
+        - slotGroupIndex
+        - patientName
+        - patientPhone
+
+    CloseSessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        unvisitedCount:
+          type: integer
+        refundedCount:
+          type: integer
+        message:
+          type: string
+      required:
+        - success
+        - unvisitedCount
+        - refundedCount
+        - message

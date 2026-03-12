@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MedBook - Doctor Appointment Booking"
+version = "1.0.0"
+id = "artifacts/medbook"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 22430
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/medbook run dev"
+
+[services.env]
+PORT = "22430"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/medbook", "run", "build"]
+publicDir = "artifacts/medbook/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

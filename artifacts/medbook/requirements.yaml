@@ -1,0 +1,25 @@
+packages:
+  "framer-motion": "Smooth page transitions and micro-interactions"
+  "date-fns": "Formatting and manipulating dates for appointments"
+  "clsx": "Utility for conditionally joining class names"
+  "tailwind-merge": "Utility to merge tailwind classes safely"
+  "@hookform/resolvers": "Zod validation for forms"
+
+images:
+  - path: "artifacts/medbook/public/images/hero-medical.png"
+    description: "Clean, modern, abstract healthcare background with soft teal and blue gradients, subtle geometric shapes"
+    aspect_ratio: "16:9"
+  - path: "artifacts/medbook/public/images/auth-bg.png"
+    description: "Soft, blurred modern clinic interior background, light and airy, out of focus"
+    aspect_ratio: "3:4"
+  - path: "artifacts/medbook/public/images/hospital-placeholder.png"
+    description: "Modern glass and steel hospital building exterior, sunny day, clean aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/medbook/public/images/doctor-placeholder.png"
+    description: "Professional medical doctor avatar placeholder, abstract, flat minimal style, teal background"
+    aspect_ratio: "1:1"
+
+notes:
+  - Auth token should be stored in localStorage as 'medbook_token'
+  - The generated API hooks use a customFetch that hopefully intercepts and attaches this token, or relies on cookies.
+  - Using wouter for routing, ensuring all links are relative to BASE_URL.
