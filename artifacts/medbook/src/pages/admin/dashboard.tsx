@@ -223,11 +223,15 @@ export default function AdminDashboard() {
     toast({ title: "Copied!", description: `"${text}" copied to clipboard` });
   };
 
-  const todaySessionsExist = sessions.data?.some(s => {
-    const sessionDate = s.date?.split("T")[0] || s.date;
-    const todayStr = new Date().toISOString().split("T")[0];
-    return sessionDate === todayStr && !s.isCancelled;
-  });
+  const todayStr = new Date().toISOString().split("T")[0];
+  const doctorIdsWithTodaySession = new Set(
+    (sessions.data || [])
+      .filter(s => (s.date?.split("T")[0] || s.date) === todayStr && !s.isCancelled)
+      .map(s => s.doctorId)
+  );
+  const availableDoctors = (doctors.data || []).filter(d => d.isAvailable);
+  const allDoctorsSeeded =
+    availableDoctors.length > 0 && availableDoctors.every(d => doctorIdsWithTodaySession.has(d.id));
 
   const filtered = <T extends any[]>(arr: T | null, keys: string[]): T =>
     (!arr ? [] : search.trim()
@@ -346,15 +350,15 @@ export default function AdminDashboard() {
                     </div>
                     <button
                       onClick={seedToday}
-                      disabled={seeding || !!todaySessionsExist}
+                      disabled={seeding || allDoctorsSeeded}
                       className={`shrink-0 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                        todaySessionsExist
+                        allDoctorsSeeded
                           ? "bg-slate-700 text-slate-400 cursor-not-allowed"
                           : "bg-primary text-white hover:-translate-y-0.5 shadow-lg shadow-primary/30"
                       }`}
                     >
                       {seeding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      {seeding ? "Seeding..." : todaySessionsExist ? "Already Seeded" : "Seed Now"}
+                      {seeding ? "Seeding..." : allDoctorsSeeded ? "All Seeded" : "Seed Now"}
                     </button>
                   </div>
 

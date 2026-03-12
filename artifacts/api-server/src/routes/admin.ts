@@ -313,8 +313,8 @@ router.post("/seed-today", adminAuth, async (req, res) => {
 
       const completedCount = Math.floor(totalTokens / 3);
       const ongoingCount = 1;
-      const bookedCount = Math.min(Math.floor(totalTokens / 3), totalTokens - completedCount - ongoingCount);
-      const availableCount = totalTokens - completedCount - ongoingCount - bookedCount;
+      // All remaining tokens after completed + ongoing are booked (simulates mid-session queue)
+      const bookedCount = totalTokens - completedCount - ongoingCount;
 
       const tokenValues: any[] = [];
       let tokenNum = 1;
@@ -349,16 +349,6 @@ router.post("/seed-today", adminAuth, async (req, res) => {
           isBuffer: false,
           patientName: patients.length > 0 ? patients[(completedCount + 1 + i) % patients.length].name : `Patient ${tokenNum}`,
           notificationSent: isNext,
-        });
-      }
-
-      for (let i = 0; i < availableCount; i++, tokenNum++) {
-        tokenValues.push({
-          sessionId: session.id,
-          tokenNumber: tokenNum,
-          status: "available",
-          isBuffer: false,
-          notificationSent: false,
         });
       }
 
