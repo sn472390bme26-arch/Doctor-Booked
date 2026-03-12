@@ -27,7 +27,7 @@ export default function Landing() {
               <span className="text-primary">Track your token live.</span>
             </h1>
             <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl">
-              MedBook connects you with top specialists and provides real-time token tracking so you arrive exactly when the doctor is ready to see you.
+              Doctor Booked connects you with top specialists and provides real-time token tracking so you arrive exactly when the doctor is ready to see you.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">

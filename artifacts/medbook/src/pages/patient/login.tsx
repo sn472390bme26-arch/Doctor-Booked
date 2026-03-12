@@ -24,7 +24,7 @@ export default function PatientLogin() {
     }, {
       onSuccess: (data) => {
         login(data.token, 'patient');
-        toast({ title: "Welcome to MedBook", description: "Successfully logged in." });
+        toast({ title: "Welcome to Doctor Booked", description: "Successfully logged in." });
         setLocation("/patient/hospitals");
       },
       onError: () => {

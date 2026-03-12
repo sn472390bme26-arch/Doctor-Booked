@@ -1,23 +1,26 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User, Activity, CalendarDays, LayoutDashboard } from "lucide-react";
+import { LogOut, User } from "lucide-react";
+import logoImg from "@assets/Final_logo_page-0001_1773317875013.jpg";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, role, logout } = useAuth();
-  const [, setLocation] = useLocation();
+  const [,] = useLocation();
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <Link href={role === 'doctor' ? "/doctor/dashboard" : "/patient/hospitals"} className="flex items-center gap-2 transition-transform hover:scale-105">
-              <div className="bg-gradient-to-br from-primary to-secondary p-2 rounded-xl text-white shadow-sm">
-                <Activity className="h-5 w-5" />
-              </div>
+            <Link href={role === 'doctor' ? "/doctor/dashboard" : "/patient/hospitals"} className="flex items-center gap-2.5 transition-transform hover:scale-105">
+              <img
+                src={logoImg}
+                alt="Doctor Booked Logo"
+                className="h-9 w-9 rounded-xl object-cover shadow-sm"
+              />
               <span className="font-display font-bold text-xl tracking-tight text-foreground">
-                Med<span className="text-primary">Book</span>
+                Doctor <span className="text-primary">Booked</span>
               </span>
             </Link>
 
@@ -38,7 +41,7 @@ export function Layout({ children }: { children: ReactNode }) {
                       </>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-3 pl-4 border-l border-border/50">
                     <div className="hidden sm:flex flex-col items-end">
                       <span className="text-sm font-semibold leading-none">{user.name}</span>
@@ -47,7 +50,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                       <User className="h-5 w-5" />
                     </div>
-                    <button 
+                    <button
                       onClick={() => logout()}
                       className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-destructive/10"
                       title="Logout"
@@ -76,7 +79,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="py-6 text-center text-sm text-muted-foreground border-t border-border mt-auto">
-        <p>© {new Date().getFullYear()} MedBook App. Premium Healthcare Access.</p>
+        <p>© {new Date().getFullYear()} Doctor Booked. Premium Healthcare Access.</p>
       </footer>
     </div>
   );
