@@ -8,4 +8,5 @@
 
 export interface CreateBookingRequest {
   sessionId: number;
+  chiefComplaint?: string | null;
 }

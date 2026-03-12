@@ -35,7 +35,7 @@ export default function BookDoctor() {
     if (!selectedSessionId) return;
 
     createBookingMutation.mutate({
-      data: { sessionId: selectedSessionId, chiefComplaint: chiefComplaint.trim() || undefined } as any,
+      data: { sessionId: selectedSessionId, chiefComplaint: chiefComplaint.trim() || undefined },
     }, {
       onSuccess: (booking) => {
         setIntakeOpen(false);

@@ -17,4 +17,6 @@ export interface Token {
   patientPhone?: string;
   bookingId?: number;
   notificationSent?: boolean;
+  chiefComplaint?: string | null;
+  bookingPatientName?: string | null;
 }

@@ -195,6 +195,8 @@ export interface Token {
   patientPhone?: string;
   bookingId?: number;
   notificationSent?: boolean;
+  chiefComplaint?: string | null;
+  bookingPatientName?: string | null;
 }
 
 export interface SessionWithTokens {
@@ -239,6 +241,7 @@ export interface Booking {
   status: BookingStatus;
   paymentStatus: BookingPaymentStatus;
   amountPaid?: number;
+  chiefComplaint?: string | null;
   doctorName?: string;
   hospitalName?: string;
   specialty?: string;
@@ -249,6 +252,7 @@ export interface Booking {
 
 export interface CreateBookingRequest {
   sessionId: number;
+  chiefComplaint?: string | null;
 }
 
 export type PaymentRequestMethod =

@@ -317,6 +317,8 @@ export const GetSessionResponse = zod.object({
       patientPhone: zod.string().optional(),
       bookingId: zod.number().optional(),
       notificationSent: zod.boolean().optional(),
+      chiefComplaint: zod.string().nullish(),
+      bookingPatientName: zod.string().nullish(),
     }),
   ),
 });
@@ -365,6 +367,7 @@ export const GetMyBookingsResponseItem = zod.object({
   ]),
   paymentStatus: zod.enum(["pending", "paid", "refunded"]),
   amountPaid: zod.number().optional(),
+  chiefComplaint: zod.string().nullish(),
   doctorName: zod.string().optional(),
   hospitalName: zod.string().optional(),
   specialty: zod.string().optional(),
@@ -379,6 +382,7 @@ export const GetMyBookingsResponse = zod.array(GetMyBookingsResponseItem);
  */
 export const CreateBookingBody = zod.object({
   sessionId: zod.number(),
+  chiefComplaint: zod.string().nullish(),
 });
 
 /**
@@ -411,6 +415,7 @@ export const ProcessPaymentResponse = zod.object({
     ]),
     paymentStatus: zod.enum(["pending", "paid", "refunded"]),
     amountPaid: zod.number().optional(),
+    chiefComplaint: zod.string().nullish(),
     doctorName: zod.string().optional(),
     hospitalName: zod.string().optional(),
     specialty: zod.string().optional(),
@@ -449,6 +454,8 @@ export const UpdateTokenStatusResponse = zod.object({
     patientPhone: zod.string().optional(),
     bookingId: zod.number().optional(),
     notificationSent: zod.boolean().optional(),
+    chiefComplaint: zod.string().nullish(),
+    bookingPatientName: zod.string().nullish(),
   }),
   nextTokenNotified: zod.number().optional(),
   message: zod.string().optional(),
@@ -478,6 +485,8 @@ export const GetSessionTokensResponseItem = zod.object({
   patientPhone: zod.string().optional(),
   bookingId: zod.number().optional(),
   notificationSent: zod.boolean().optional(),
+  chiefComplaint: zod.string().nullish(),
+  bookingPatientName: zod.string().nullish(),
 });
 export const GetSessionTokensResponse = zod.array(GetSessionTokensResponseItem);
 
@@ -511,4 +520,6 @@ export const ActivateBufferSlotResponse = zod.object({
   patientPhone: zod.string().optional(),
   bookingId: zod.number().optional(),
   notificationSent: zod.boolean().optional(),
+  chiefComplaint: zod.string().nullish(),
+  bookingPatientName: zod.string().nullish(),
 });

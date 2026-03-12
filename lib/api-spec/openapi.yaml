@@ -771,6 +771,12 @@ components:
           type: integer
         notificationSent:
           type: boolean
+        chiefComplaint:
+          type: string
+          nullable: true
+        bookingPatientName:
+          type: string
+          nullable: true
       required:
         - id
         - sessionId
@@ -810,6 +816,9 @@ components:
           enum: [pending, paid, refunded]
         amountPaid:
           type: number
+        chiefComplaint:
+          type: string
+          nullable: true
         doctorName:
           type: string
         hospitalName:
@@ -837,6 +846,9 @@ components:
       properties:
         sessionId:
           type: integer
+        chiefComplaint:
+          type: string
+          nullable: true
       required:
         - sessionId
 

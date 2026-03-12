@@ -83,8 +83,8 @@ export default function DoctorDashboard() {
       id: tokenId,
       number: tokenNumber,
       status,
-      chiefComplaint: (token as any)?.chiefComplaint || null,
-      patientName: (token as any)?.bookingPatientName || (token as any)?.patientName || null,
+      chiefComplaint: token?.chiefComplaint || null,
+      patientName: token?.bookingPatientName || token?.patientName || null,
     });
   };
 

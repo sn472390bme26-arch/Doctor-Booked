@@ -17,6 +17,7 @@ export interface Booking {
   status: BookingStatus;
   paymentStatus: BookingPaymentStatus;
   amountPaid?: number;
+  chiefComplaint?: string | null;
   doctorName?: string;
   hospitalName?: string;
   specialty?: string;
