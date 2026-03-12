@@ -173,6 +173,7 @@ router.get("/bookings", adminAuth, async (req, res) => {
 
     res.json(bookings.map(b => ({
       ...b,
+      chiefComplaint: b.chiefComplaint || null,
       patientName: patMap[b.patientId] || "Unknown",
     })));
   } catch (err: any) {

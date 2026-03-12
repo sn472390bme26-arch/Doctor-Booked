@@ -12,7 +12,7 @@ import {
 import { format, addDays } from "date-fns";
 import {
   Users, PowerOff, UserPlus, CheckCircle2, PlayCircle, SkipForward,
-  CalendarPlus, X, AlertTriangle, Clock, ChevronRight
+  CalendarPlus, X, AlertTriangle, Clock, ChevronRight, FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,7 +56,7 @@ export default function DoctorDashboard() {
   const upcomingSessions = allSessions.filter(s => s.date > todayStr && !s.isCancelled).slice(0, 5);
 
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
-  const [tokenModal, setTokenModal] = useState<{ id: number; number: number; status: string } | null>(null);
+  const [tokenModal, setTokenModal] = useState<{ id: number; number: number; status: string; chiefComplaint?: string | null; patientName?: string | null } | null>(null);
   const [bufferModal, setBufferModal] = useState<{ groupIndex: number } | null>(null);
   const [closeModal, setCloseModal] = useState(false);
   const [newSessionModal, setNewSessionModal] = useState(false);
@@ -78,7 +78,14 @@ export default function DoctorDashboard() {
 
   const handleTokenClick = (tokenId: number, tokenNumber: number, status: string) => {
     if (status === "available" || status === "completed") return;
-    setTokenModal({ id: tokenId, number: tokenNumber, status });
+    const token = tokens.find(t => t.id === tokenId);
+    setTokenModal({
+      id: tokenId,
+      number: tokenNumber,
+      status,
+      chiefComplaint: (token as any)?.chiefComplaint || null,
+      patientName: (token as any)?.bookingPatientName || (token as any)?.patientName || null,
+    });
   };
 
   const handleStatusUpdate = (status: "ongoing" | "completed" | "skipped") => {
@@ -245,8 +252,23 @@ export default function DoctorDashboard() {
       <AnimatePresence>
         {tokenModal && (
           <Modal open={!!tokenModal} onClose={() => setTokenModal(null)} title={`Token #${tokenModal.number}`}>
-            <p className="text-muted-foreground text-sm mb-6">
-              Current status: <strong className="text-foreground capitalize">{tokenModal.status}</strong>. Choose an action:
+            {tokenModal.patientName && (
+              <p className="text-sm text-muted-foreground mb-2">
+                Patient: <strong className="text-foreground">{tokenModal.patientName}</strong>
+              </p>
+            )}
+            <div className="mb-5 p-3.5 rounded-xl bg-muted/60 border border-border">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" /> Patient Complaint
+              </p>
+              {tokenModal.chiefComplaint ? (
+                <p className="text-sm text-foreground leading-relaxed">{tokenModal.chiefComplaint}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No complaint submitted</p>
+              )}
+            </div>
+            <p className="text-muted-foreground text-sm mb-4">
+              Status: <strong className="text-foreground capitalize">{tokenModal.status}</strong>. Choose an action:
             </p>
             <div className="space-y-3">
               {(tokenModal.status === "booked") && (

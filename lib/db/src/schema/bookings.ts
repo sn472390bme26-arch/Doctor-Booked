@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -15,6 +15,7 @@ export const bookingsTable = pgTable("bookings", {
   status: bookingStatusEnum("status").notNull().default("pending_payment"),
   paymentStatus: paymentStatusEnum("payment_status").notNull().default("pending"),
   amountPaid: numeric("amount_paid", { precision: 10, scale: 2 }),
+  chiefComplaint: text("chief_complaint"),
   transactionId: integer("transaction_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

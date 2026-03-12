@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { sessionsTable, doctorsTable, hospitalsTable, bookingsTable, tokensTable } from "@workspace/db/schema";
+import { sessionsTable, doctorsTable, hospitalsTable, bookingsTable, tokensTable, usersTable } from "@workspace/db/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
-import { authenticate } from "../middlewares/auth";
+import { authenticate, optionalAuth } from "../middlewares/auth";
 
 const router = Router();
 
@@ -192,11 +192,46 @@ router.post("/:id/close", authenticate, async (req: any, res) => {
   }
 });
 
-router.get("/:id/tokens", async (req, res) => {
+router.get("/:id/tokens", optionalAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
     const tokens = await db.select().from(tokensTable).where(eq(tokensTable.sessionId, id));
-    res.json(tokens);
+    const isDoctor = req.user?.role === "doctor";
+
+    if (!isDoctor) {
+      return res.json(tokens.map(t => ({
+        ...t,
+        chiefComplaint: null,
+        bookingPatientName: null,
+      })));
+    }
+
+    const bookingIds = tokens.map(t => t.bookingId).filter((id): id is number => id !== null && id !== undefined);
+    let bookingMap: Record<number, { chiefComplaint: string | null; patientName: string }> = {};
+    if (bookingIds.length > 0) {
+      const bookings = await db.select({
+        id: bookingsTable.id,
+        chiefComplaint: bookingsTable.chiefComplaint,
+        patientId: bookingsTable.patientId,
+      }).from(bookingsTable).where(inArray(bookingsTable.id, bookingIds));
+
+      const patientIds = [...new Set(bookings.map(b => b.patientId))];
+      const patients = patientIds.length > 0
+        ? await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, patientIds))
+        : [];
+      const patientMap = Object.fromEntries(patients.map(p => [p.id, p.name]));
+
+      bookingMap = Object.fromEntries(bookings.map(b => [b.id, {
+        chiefComplaint: b.chiefComplaint,
+        patientName: patientMap[b.patientId] || "Unknown",
+      }]));
+    }
+
+    res.json(tokens.map(t => ({
+      ...t,
+      chiefComplaint: t.bookingId ? (bookingMap[t.bookingId]?.chiefComplaint ?? null) : null,
+      bookingPatientName: t.bookingId ? (bookingMap[t.bookingId]?.patientName ?? null) : t.patientName || null,
+    })));
   } catch (err: any) {
     res.status(500).json({ error: "server_error", message: err.message });
   }

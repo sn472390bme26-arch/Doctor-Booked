@@ -94,3 +94,26 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+## Doctor Booked App Features
+
+### Patient Intake Dialog
+- `bookings` table has `chief_complaint TEXT` column
+- `POST /api/bookings` accepts optional `chiefComplaint` field
+- Patient sees an intake modal ("Before Your Visit") when clicking "Generate Token" on the booking page — can enter symptoms (max 500 chars), optional
+- Doctor dashboard token modal shows patient name and chief complaint
+- Admin bookings table has a "Complaint" column
+
+### Privacy
+- `GET /api/sessions/:id/tokens` uses `optionalAuth` middleware — only returns `chiefComplaint` and `bookingPatientName` when the caller is an authenticated doctor; unauthenticated or patient callers see `null` for these fields
+- `optionalAuth` middleware in `middlewares/auth.ts` — parses JWT if present but doesn't reject if missing
+
+### API Routes
+- `GET /api/doctors/:id/sessions` — returns sessions for a doctor (matches generated API client path); supports `fromDate`/`toDate` query params
+- `GET /api/sessions/doctor/:doctorId` — legacy sessions endpoint (same data)
+
+### Demo Data
+- 45 demo sessions seeded for 6 doctors across 5 days
+- Admin credentials: `admin` / `DoctorBooked@2024`
+- Demo patient: `demo@patient.com` / `password`
+- Doctor login codes: DOC001–DOC006

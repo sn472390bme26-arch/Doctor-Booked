@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetDoctorSessions, useCreateBooking } from "@workspace/api-client-react";
 import { format, addDays } from "date-fns";
-import { Calendar, Clock, ArrowRight, Activity, Info } from "lucide-react";
+import { Calendar, Clock, ArrowRight, Activity, Info, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function BookDoctor() {
   const [, params] = useRoute("/patient/book/:id");
@@ -11,27 +12,34 @@ export default function BookDoctor() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Generate next 5 days
   const today = new Date();
   const dates = Array.from({ length: 5 }).map((_, i) => addDays(today, i));
   const [selectedDate, setSelectedDate] = useState<Date>(dates[0]);
 
-  // Fetch sessions for this doctor
   const { data: sessions, isLoading } = useGetDoctorSessions(doctorId, undefined, {
     query: { enabled: !!doctorId, refetchInterval: 8000 }
   });
 
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [chiefComplaint, setChiefComplaint] = useState("");
 
   const createBookingMutation = useCreateBooking();
 
-  const handleBook = () => {
+  const handleGenerateClick = () => {
     if (!selectedSessionId) return;
-    
+    setIntakeOpen(true);
+  };
+
+  const handleConfirmBooking = () => {
+    if (!selectedSessionId) return;
+
     createBookingMutation.mutate({
-      data: { sessionId: selectedSessionId }
+      data: { sessionId: selectedSessionId, chiefComplaint: chiefComplaint.trim() || undefined } as any,
     }, {
       onSuccess: (booking) => {
+        setIntakeOpen(false);
+        setChiefComplaint("");
         setLocation(`/patient/pay/${booking.id}`);
       },
       onError: (err) => {
@@ -147,7 +155,7 @@ export default function BookDoctor() {
             </div>
             
             <button
-              onClick={handleBook}
+              onClick={handleGenerateClick}
               disabled={createBookingMutation.isPending}
               className="w-full md:w-auto whitespace-nowrap px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
@@ -157,6 +165,77 @@ export default function BookDoctor() {
           </div>
         </div>
       )}
+
+      {/* ─── Patient Intake Modal ─── */}
+      <AnimatePresence>
+        {intakeOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !createBookingMutation.isPending && setIntakeOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              className="relative bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 z-10"
+            >
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold font-display">Before Your Visit</h3>
+                    <p className="text-xs text-muted-foreground">Help your doctor prepare</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => !createBookingMutation.isPending && setIntakeOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-muted transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold text-foreground block mb-2">
+                    What symptoms or conditions are you currently experiencing?
+                  </label>
+                  <textarea
+                    value={chiefComplaint}
+                    onChange={e => setChiefComplaint(e.target.value)}
+                    placeholder="e.g., chest pain for 2 days, mild fever, headache since morning..."
+                    className="w-full h-32 p-4 rounded-2xl border border-border bg-background text-foreground placeholder-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm"
+                    maxLength={500}
+                    autoFocus
+                  />
+                  <div className="flex justify-between mt-1.5">
+                    <p className="text-xs text-muted-foreground">This is optional — you can leave it blank</p>
+                    <p className="text-xs text-muted-foreground">{chiefComplaint.length}/500</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => { setIntakeOpen(false); setChiefComplaint(""); }}
+                    disabled={createBookingMutation.isPending}
+                    className="flex-1 py-3.5 border-2 border-border rounded-2xl font-semibold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmBooking}
+                    disabled={createBookingMutation.isPending}
+                    className="flex-1 py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {createBookingMutation.isPending ? "Generating..." : "Confirm & Get Token"}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

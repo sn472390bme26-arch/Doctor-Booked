@@ -18,3 +18,18 @@ export function authenticate(req: any, res: Response, next: NextFunction) {
     return res.status(401).json({ error: "unauthorized", message: "Invalid token" });
   }
 }
+
+export function optionalAuth(req: any, _res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    req.user = null;
+    return next();
+  }
+  try {
+    const token = authHeader.slice(7);
+    req.user = jwt.verify(token, JWT_SECRET) as any;
+  } catch {
+    req.user = null;
+  }
+  next();
+}

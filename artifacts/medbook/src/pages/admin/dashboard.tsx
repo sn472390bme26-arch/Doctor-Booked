@@ -384,6 +384,7 @@ export default function AdminDashboard() {
                   <tr className="border-b border-white/10">
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Patient</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Token #</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Complaint</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Amount</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Payment</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
@@ -395,6 +396,7 @@ export default function AdminDashboard() {
                     <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/2"} hover:bg-white/5`}>
                       <td className="py-3 px-5 text-white font-medium text-sm">{b.patientName}</td>
                       <td className="py-3 px-5 text-slate-300 text-sm font-mono">{b.tokenNumber}</td>
+                      <td className="py-3 px-5 text-slate-400 text-sm max-w-[200px] truncate" title={b.chiefComplaint || ""}>{b.chiefComplaint || <span className="text-slate-600 italic">—</span>}</td>
                       <td className="py-3 px-5 text-slate-300 text-sm">₹{Number(b.amount || 0).toLocaleString("en-IN")}</td>
                       <td className="py-3 px-5">
                         <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${b.paymentStatus === "completed" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>

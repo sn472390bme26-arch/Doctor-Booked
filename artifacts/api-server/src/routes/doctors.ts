@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { doctorsTable } from "@workspace/db/schema";
+import { doctorsTable, sessionsTable, hospitalsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { authenticate } from "../middlewares/auth";
@@ -77,6 +77,36 @@ router.put("/me", authenticate, async (req: any, res) => {
     });
   } catch (err: any) {
     res.status(400).json({ error: "bad_request", message: err.message });
+  }
+});
+
+router.get("/:id/sessions", async (req, res) => {
+  try {
+    const doctorId = parseInt(req.params.id);
+    const fromDate = req.query.fromDate as string | undefined;
+    const toDate = req.query.toDate as string | undefined;
+    const sessions = await db.select().from(sessionsTable).where(eq(sessionsTable.doctorId, doctorId));
+    const filtered = sessions.filter(s => {
+      if (s.isCancelled) return false;
+      if (fromDate && s.date < fromDate) return false;
+      if (toDate && s.date > toDate) return false;
+      return true;
+    });
+
+    const doctor = await db.select().from(doctorsTable).where(eq(doctorsTable.id, doctorId)).limit(1);
+    const hospital = doctor.length > 0
+      ? await db.select().from(hospitalsTable).where(eq(hospitalsTable.id, doctor[0].hospitalId)).limit(1)
+      : [];
+
+    res.json(filtered.map(s => ({
+      ...s,
+      doctorName: doctor[0]?.name || "",
+      hospitalId: doctor[0]?.hospitalId || 0,
+      hospitalName: hospital[0]?.name || "",
+      consultationFee: doctor[0] ? parseFloat(doctor[0].consultationFee as string) : 0,
+    })));
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
   }
 });
 

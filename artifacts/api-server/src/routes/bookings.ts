@@ -28,6 +28,7 @@ router.get("/", authenticate, async (req: any, res) => {
       return {
         ...b,
         amountPaid: b.amountPaid ? parseFloat(b.amountPaid as string) : null,
+        chiefComplaint: b.chiefComplaint || null,
         doctorName: doctor?.name || "Unknown",
         hospitalName: hospital?.name || "Unknown",
         specialty: doctor?.specialty || "",
@@ -48,7 +49,10 @@ router.post("/", authenticate, async (req: any, res) => {
       return res.status(403).json({ error: "forbidden", message: "Patients only" });
     }
 
-    const { sessionId } = z.object({ sessionId: z.number().int() }).parse(req.body);
+    const { sessionId, chiefComplaint } = z.object({
+      sessionId: z.number().int(),
+      chiefComplaint: z.string().optional(),
+    }).parse(req.body);
 
     const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
     if (!session) return res.status(404).json({ error: "not_found", message: "Session not found" });
@@ -74,6 +78,7 @@ router.post("/", authenticate, async (req: any, res) => {
       patientId: req.user.userId,
       sessionId,
       tokenNumber,
+      chiefComplaint: chiefComplaint?.trim() || null,
       status: "pending_payment",
       paymentStatus: "pending",
     }).returning();
