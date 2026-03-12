@@ -48,8 +48,8 @@ export default function DoctorDashboard() {
   const doctorId = user?.doctorId || 0;
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const { data: allSessions = [], refetch: refetchSessions } = useGetDoctorSessions(doctorId, {
-    query: { enabled: !!doctorId },
+  const { data: allSessions = [], refetch: refetchSessions } = useGetDoctorSessions(doctorId, undefined, {
+    query: { queryKey: [] as any, enabled: !!doctorId },
   });
 
   const todaySessions = allSessions.filter(s => s.date === todayStr && !s.isCancelled);
@@ -67,7 +67,7 @@ export default function DoctorDashboard() {
   const effectiveSessionId = selectedSessionId ?? (todaySessions[0]?.id || null);
 
   const { data: tokens = [], refetch: refetchTokens } = useGetSessionTokens(effectiveSessionId || 0, {
-    query: { enabled: !!effectiveSessionId, refetchInterval: 8000 },
+    query: { queryKey: [] as any, enabled: !!effectiveSessionId, refetchInterval: 8000 },
   });
 
   const updateStatusMutation = useUpdateTokenStatus();
