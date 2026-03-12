@@ -67,6 +67,16 @@ router.post("/", authenticate, async (req: any, res) => {
       status: "upcoming",
     }).returning();
 
+    // Auto-create all token slots for this session
+    const tokenRows = Array.from({ length: data.totalTokens }, (_, i) => ({
+      sessionId: session.id,
+      tokenNumber: i + 1,
+      status: "available" as const,
+      isBuffer: false,
+      notificationSent: false,
+    }));
+    await db.insert(tokensTable).values(tokenRows);
+
     const doctor = await db.select().from(doctorsTable)
       .where(eq(doctorsTable.id, req.user.doctorId)).limit(1);
 

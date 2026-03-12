@@ -57,15 +57,18 @@ router.post("/", authenticate, async (req: any, res) => {
       return res.status(400).json({ error: "bad_request", message: "Session is full" });
     }
 
-    const tokenNumber = session.bookedTokens + 1;
+    // Find the next available token slot (first-come-first-serve)
+    const availableTokens = await db.select().from(tokensTable)
+      .where(and(eq(tokensTable.sessionId, sessionId), eq(tokensTable.status, "available")));
 
-    const [token] = await db.insert(tokensTable).values({
-      sessionId,
-      tokenNumber,
-      status: "booked",
-      isBuffer: false,
-      notificationSent: false,
-    }).returning();
+    availableTokens.sort((a, b) => a.tokenNumber - b.tokenNumber);
+    const nextToken = availableTokens[0];
+
+    if (!nextToken) {
+      return res.status(400).json({ error: "bad_request", message: "Session is full. No available slots." });
+    }
+
+    const tokenNumber = nextToken.tokenNumber;
 
     const [booking] = await db.insert(bookingsTable).values({
       patientId: req.user.userId,
@@ -75,9 +78,13 @@ router.post("/", authenticate, async (req: any, res) => {
       paymentStatus: "pending",
     }).returning();
 
-    await db.update(tokensTable).set({ bookingId: booking.id }).where(eq(tokensTable.id, token.id));
+    // Update the existing available token to booked
+    await db.update(tokensTable)
+      .set({ status: "booked", bookingId: booking.id })
+      .where(eq(tokensTable.id, nextToken.id));
+
     await db.update(sessionsTable)
-      .set({ bookedTokens: tokenNumber })
+      .set({ bookedTokens: session.bookedTokens + 1 })
       .where(eq(sessionsTable.id, sessionId));
 
     const [doctor] = await db.select().from(doctorsTable).where(eq(doctorsTable.id, session.doctorId)).limit(1);
