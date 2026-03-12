@@ -17,6 +17,7 @@ const patientLoginSchema = z.object({
 
 const doctorLoginSchema = z.object({
   loginCode: z.string().min(1),
+  phone: z.string().optional(),
 });
 
 router.post("/patient/login", async (req, res) => {
@@ -91,7 +92,7 @@ router.post("/patient/login", async (req, res) => {
 
 router.post("/doctor/login", async (req, res) => {
   try {
-    const { loginCode } = doctorLoginSchema.parse(req.body);
+    const { loginCode, phone } = doctorLoginSchema.parse(req.body);
 
     const doctors = await db.select({
       doctor: doctorsTable,
@@ -103,10 +104,19 @@ router.post("/doctor/login", async (req, res) => {
       .limit(1);
 
     if (doctors.length === 0) {
-      return res.status(401).json({ error: "unauthorized", message: "Invalid login code" });
+      return res.status(401).json({ error: "unauthorized", message: "Invalid doctor code" });
     }
 
     const { doctor, user } = doctors[0];
+
+    // If the doctor's user account has a phone set, require phone verification
+    if (user.phone) {
+      const normalize = (p: string) => p.replace(/[\s\-\(\)\+]/g, "");
+      if (!phone || normalize(phone) !== normalize(user.phone)) {
+        return res.status(401).json({ error: "unauthorized", message: "Invalid phone number" });
+      }
+    }
+
     const token = jwt.sign({ userId: user.id, role: "doctor", doctorId: doctor.id }, JWT_SECRET, { expiresIn: "7d" });
 
     res.json({

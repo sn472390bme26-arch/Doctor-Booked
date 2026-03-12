@@ -52,7 +52,9 @@ export default function DoctorDashboard() {
     query: { enabled: !!doctorId },
   });
 
-  const todaySessions = allSessions.filter(s => s.date === todayStr && !s.isCancelled);
+  const todaySessions = allSessions.filter(s =>
+    s.date === todayStr && !s.isCancelled && s.status !== "closed" && s.status !== "cancelled"
+  );
   const upcomingSessions = allSessions.filter(s => s.date > todayStr && !s.isCancelled).slice(0, 5);
 
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);

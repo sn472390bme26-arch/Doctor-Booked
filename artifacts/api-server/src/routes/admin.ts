@@ -91,6 +91,7 @@ router.get("/doctors", adminAuth, async (req, res) => {
   try {
     const doctors = await db.select({
       id: doctorsTable.id,
+      userId: doctorsTable.userId,
       name: doctorsTable.name,
       specialty: doctorsTable.specialty,
       consultationFee: doctorsTable.consultationFee,
@@ -103,7 +104,86 @@ router.get("/doctors", adminAuth, async (req, res) => {
     const hospitals = await db.select({ id: hospitalsTable.id, name: hospitalsTable.name }).from(hospitalsTable);
     const hospitalMap = Object.fromEntries(hospitals.map(h => [h.id, h.name]));
 
-    res.json(doctors.map(d => ({ ...d, hospitalName: hospitalMap[d.hospitalId] || "Unknown" })));
+    const users = await db.select({ id: usersTable.id, phone: usersTable.phone }).from(usersTable);
+    const userPhoneMap = Object.fromEntries(users.map(u => [u.id, u.phone]));
+
+    res.json(doctors.map(d => ({ ...d, hospitalName: hospitalMap[d.hospitalId] || "Unknown", phone: userPhoneMap[d.userId] || null })));
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── POST /admin/doctors ───────────────────────────────────────────────────────
+router.post("/doctors", adminAuth, async (req, res) => {
+  try {
+    const { name, phone, hospitalId, specialty, consultationFee, tokensPerSession } = req.body;
+    if (!name || !phone || !hospitalId || !specialty) {
+      return res.status(400).json({ error: "bad_request", message: "name, phone, hospitalId and specialty are required" });
+    }
+
+    // Check phone not already used
+    const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "conflict", message: "A user with this phone number already exists" });
+    }
+
+    // Generate sequential login code: DOC-00001, DOC-00002, ...
+    const allDoctors = await db.select({ id: doctorsTable.id }).from(doctorsTable).orderBy(desc(doctorsTable.id)).limit(1);
+    const nextNum = allDoctors.length > 0 ? allDoctors[0].id + 1 : 1;
+    const loginCode = `DOC-${String(nextNum).padStart(5, "0")}`;
+
+    // Create user record
+    const [user] = await db.insert(usersTable).values({
+      name,
+      phone,
+      role: "doctor",
+    }).returning();
+
+    // Create doctor record
+    const [doctor] = await db.insert(doctorsTable).values({
+      userId: user.id,
+      hospitalId: parseInt(hospitalId),
+      name,
+      specialty,
+      loginCode,
+      consultationFee: consultationFee ? String(consultationFee) : "500",
+      tokensPerSession: tokensPerSession || 20,
+      isAvailable: true,
+      sessionTypes: [
+        { type: "morning", startTime: "09:00", endTime: "12:00", isActive: true },
+        { type: "afternoon", startTime: "14:00", endTime: "17:00", isActive: false },
+      ],
+    }).returning();
+
+    const [hospital] = await db.select({ name: hospitalsTable.name }).from(hospitalsTable).where(eq(hospitalsTable.id, parseInt(hospitalId))).limit(1);
+
+    res.status(201).json({
+      ...doctor,
+      hospitalName: hospital?.name || "Unknown",
+      loginCode,
+      message: `Doctor created successfully. Login Code: ${loginCode}`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// ─── POST /admin/hospitals ─────────────────────────────────────────────────────
+router.post("/hospitals", adminAuth, async (req, res) => {
+  try {
+    const { name, location, address, phone } = req.body;
+    if (!name || !location || !address) {
+      return res.status(400).json({ error: "bad_request", message: "name, location and address are required" });
+    }
+
+    const [hospital] = await db.insert(hospitalsTable).values({
+      name,
+      location,
+      address,
+      phone: phone || null,
+    }).returning();
+
+    res.status(201).json({ ...hospital, doctorCount: 0 });
   } catch (err: any) {
     res.status(500).json({ error: "server_error", message: err.message });
   }
@@ -113,12 +193,13 @@ router.get("/doctors", adminAuth, async (req, res) => {
 router.put("/doctors/:id", adminAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { isAvailable, consultationFee, name, specialty } = req.body;
+    const { isAvailable, consultationFee, name, specialty, hospitalId } = req.body;
     const updates: any = {};
     if (isAvailable !== undefined) updates.isAvailable = isAvailable;
     if (consultationFee !== undefined) updates.consultationFee = String(consultationFee);
     if (name) updates.name = name;
     if (specialty) updates.specialty = specialty;
+    if (hospitalId !== undefined) updates.hospitalId = parseInt(hospitalId);
 
     await db.update(doctorsTable).set(updates).where(eq(doctorsTable.id, id));
     const [updated] = await db.select().from(doctorsTable).where(eq(doctorsTable.id, id));

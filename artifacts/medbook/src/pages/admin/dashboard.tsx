@@ -3,7 +3,8 @@ import { useLocation } from "wouter";
 import {
   Hospital, Users, Stethoscope, CalendarDays, BookOpen,
   LogOut, ShieldCheck, RefreshCw, ToggleLeft, ToggleRight,
-  XCircle, Search, ChevronDown, ChevronRight, Zap
+  XCircle, Search, ChevronDown, ChevronRight, Zap,
+  Plus, X, Copy, CheckCircle2, Phone, KeyRound
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,46 @@ const NAV: { id: Tab; label: string; icon: any }[] = [
   { id: "bookings", label: "Bookings", icon: BookOpen },
 ];
 
+function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-white font-bold text-lg">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 transition-colors text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function InputField({ label, type = "text", value, onChange, placeholder, required, hint }: {
+  label: string; type?: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; required?: boolean; hint?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-slate-300 text-sm font-medium block">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:bg-white/8 transition-all"
+        required={required}
+      />
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { token, isAuthenticated, logout } = useAdminAuth();
@@ -55,6 +96,14 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
   const [seeding, setSeeding] = useState(false);
+
+  const [showAddDoctor, setShowAddDoctor] = useState(false);
+  const [showAddHospital, setShowAddHospital] = useState(false);
+  const [newDoctorResult, setNewDoctorResult] = useState<{ name: string; loginCode: string; phone: string } | null>(null);
+
+  const [doctorForm, setDoctorForm] = useState({ name: "", phone: "", hospitalId: "", specialty: "", consultationFee: "500", tokensPerSession: "20" });
+  const [hospitalForm, setHospitalForm] = useState({ name: "", location: "", address: "", phone: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) setLocation("/admin/login");
@@ -116,6 +165,64 @@ export default function AdminDashboard() {
     }
   };
 
+  const createDoctor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/doctors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: doctorForm.name,
+          phone: doctorForm.phone,
+          hospitalId: parseInt(doctorForm.hospitalId),
+          specialty: doctorForm.specialty,
+          consultationFee: parseFloat(doctorForm.consultationFee) || 500,
+          tokensPerSession: parseInt(doctorForm.tokensPerSession) || 20,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create doctor");
+      setNewDoctorResult({ name: data.name, loginCode: data.loginCode, phone: doctorForm.phone });
+      setShowAddDoctor(false);
+      setDoctorForm({ name: "", phone: "", hospitalId: "", specialty: "", consultationFee: "500", tokensPerSession: "20" });
+      doctors.reload();
+      stats.reload();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createHospital = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/hospitals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(hospitalForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create hospital");
+      toast({ title: "Hospital Created", description: `${data.name} added successfully.` });
+      setShowAddHospital(false);
+      setHospitalForm({ name: "", location: "", address: "", phone: "" });
+      hospitals.reload();
+      stats.reload();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied!", description: `"${text}" copied to clipboard` });
+  };
+
   const todaySessionsExist = sessions.data?.some(s => {
     const sessionDate = s.date?.split("T")[0] || s.date;
     const todayStr = new Date().toISOString().split("T")[0];
@@ -175,17 +282,35 @@ export default function AdminDashboard() {
             <h1 className="text-white font-bold text-xl capitalize">{tab === "overview" ? "Dashboard Overview" : tab}</h1>
             <p className="text-slate-500 text-sm">Doctor Booked Admin Control Panel</p>
           </div>
-          {tab !== "overview" && (
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary w-64"
-                placeholder={`Search ${tab}...`}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {tab === "doctors" && (
+              <button
+                onClick={() => setShowAddDoctor(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/30"
+              >
+                <Plus className="w-4 h-4" /> Add Doctor
+              </button>
+            )}
+            {tab === "hospitals" && (
+              <button
+                onClick={() => setShowAddHospital(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/30"
+              >
+                <Plus className="w-4 h-4" /> Add Hospital
+              </button>
+            )}
+            {tab !== "overview" && (
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary w-56"
+                  placeholder={`Search ${tab}...`}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-8 space-y-6">
@@ -217,7 +342,7 @@ export default function AdminDashboard() {
                       <h3 className="text-white font-semibold flex items-center gap-2 mb-1">
                         <Zap className="w-4 h-4 text-primary" /> Seed Today's Sessions
                       </h3>
-                      <p className="text-slate-400 text-sm">Create one session per doctor with simulated tokens (completed, ongoing, booked) for testing the live queue.</p>
+                      <p className="text-slate-400 text-sm">Create one session per doctor with simulated tokens for testing the live queue.</p>
                     </div>
                     <button
                       onClick={seedToday}
@@ -276,22 +401,25 @@ export default function AdminDashboard() {
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Name</th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">City</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">City / Location</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Doctors</th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Type</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Phone</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered(hospitals.data, ["name", "city"]).map((h, i) => (
+                  {filtered(hospitals.data, ["name", "city", "location"]).map((h, i) => (
                     <tr key={h.id} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/2"} hover:bg-white/5`}>
                       <td className="py-3 px-5 text-white font-medium text-sm">{h.name}</td>
-                      <td className="py-3 px-5 text-slate-400 text-sm">{h.city}</td>
+                      <td className="py-3 px-5 text-slate-400 text-sm">{h.location || h.city || "—"}</td>
                       <td className="py-3 px-5">
                         <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">{h.doctorCount}</span>
                       </td>
-                      <td className="py-3 px-5 text-slate-400 text-sm">{h.type || "General"}</td>
+                      <td className="py-3 px-5 text-slate-400 text-sm">{h.phone || "—"}</td>
                     </tr>
                   ))}
+                  {(hospitals.data?.length ?? 0) === 0 && (
+                    <tr><td colSpan={4} className="text-center py-10 text-slate-500">No hospitals found. Click "Add Hospital" to create one.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -306,21 +434,27 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Doctor</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Hospital</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Specialty</th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Fee</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Phone</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Login Code</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
                     <th className="text-left py-3 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered(doctors.data, ["name", "specialty", "hospitalName", "loginCode"]).map((d, i) => (
+                  {filtered(doctors.data, ["name", "specialty", "hospitalName", "loginCode", "phone"]).map((d, i) => (
                     <tr key={d.id} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/2"} hover:bg-white/5`}>
                       <td className="py-3 px-5 text-white font-medium text-sm">{d.name}</td>
                       <td className="py-3 px-5 text-slate-400 text-sm">{d.hospitalName}</td>
                       <td className="py-3 px-5 text-slate-400 text-sm">{d.specialty}</td>
-                      <td className="py-3 px-5 text-slate-300 text-sm">₹{Number(d.consultationFee).toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-5 text-slate-400 text-sm">{d.phone || <span className="text-slate-600 italic text-xs">Not set</span>}</td>
                       <td className="py-3 px-5">
-                        <code className="text-xs bg-white/10 text-primary px-2 py-0.5 rounded">{d.loginCode}</code>
+                        <button
+                          onClick={() => copyToClipboard(d.loginCode)}
+                          className="flex items-center gap-1.5 text-xs bg-white/10 text-primary px-2.5 py-1 rounded-lg hover:bg-primary hover:text-white transition-all font-mono"
+                          title="Click to copy"
+                        >
+                          {d.loginCode} <Copy className="w-3 h-3 opacity-60" />
+                        </button>
                       </td>
                       <td className="py-3 px-5">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${d.isAvailable ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
@@ -342,6 +476,9 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
+                  {(doctors.data?.length ?? 0) === 0 && (
+                    <tr><td colSpan={7} className="text-center py-10 text-slate-500">No doctors found. Click "Add Doctor" to create one.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -442,22 +579,25 @@ export default function AdminDashboard() {
                   {filtered(bookings.data, ["patientName", "status"]).map((b, i) => (
                     <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "" : "bg-white/2"} hover:bg-white/5`}>
                       <td className="py-3 px-5 text-white font-medium text-sm">{b.patientName}</td>
-                      <td className="py-3 px-5 text-slate-300 text-sm font-mono">{b.tokenNumber}</td>
-                      <td className="py-3 px-5 text-slate-400 text-sm max-w-[200px] truncate" title={b.chiefComplaint || ""}>{b.chiefComplaint || <span className="text-slate-600 italic">—</span>}</td>
-                      <td className="py-3 px-5 text-slate-300 text-sm">₹{Number(b.amount || 0).toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-5 text-slate-300 text-sm">#{b.tokenNumber}</td>
+                      <td className="py-3 px-5 text-slate-400 text-sm max-w-[200px] truncate" title={b.chiefComplaint || ""}>{b.chiefComplaint || <span className="text-slate-600 italic text-xs">None</span>}</td>
+                      <td className="py-3 px-5 text-slate-300 text-sm">₹{b.amount ? Number(b.amount).toLocaleString("en-IN") : "—"}</td>
                       <td className="py-3 px-5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${b.paymentStatus === "completed" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
-                          {b.paymentStatus || "pending"}
-                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          b.paymentStatus === "paid" ? "bg-emerald-500/20 text-emerald-400" :
+                          b.paymentStatus === "refunded" ? "bg-blue-500/20 text-blue-400" :
+                          "bg-slate-500/20 text-slate-400"
+                        }`}>{b.paymentStatus}</span>
                       </td>
                       <td className="py-3 px-5">
                         <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                          b.status === "completed" ? "bg-blue-500/20 text-blue-400" :
                           b.status === "confirmed" ? "bg-emerald-500/20 text-emerald-400" :
+                          b.status === "completed" ? "bg-blue-500/20 text-blue-400" :
+                          b.status === "cancelled" ? "bg-red-500/20 text-red-400" :
                           "bg-slate-500/20 text-slate-400"
                         }`}>{b.status}</span>
                       </td>
-                      <td className="py-3 px-5 text-slate-500 text-xs">{new Date(b.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="py-3 px-5 text-slate-500 text-xs">{new Date(b.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -466,6 +606,110 @@ export default function AdminDashboard() {
           )}
         </div>
       </main>
+
+      {/* ─── Add Doctor Modal ─── */}
+      <Modal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} title="Add New Doctor">
+        <form onSubmit={createDoctor} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Full Name" value={doctorForm.name} onChange={v => setDoctorForm(f => ({ ...f, name: v }))} placeholder="Dr. Priya Sharma" required />
+            <InputField label="Phone Number" type="tel" value={doctorForm.phone} onChange={v => setDoctorForm(f => ({ ...f, phone: v }))} placeholder="+91 98765 43210" required hint="This will be the doctor's login password" />
+          </div>
+          <div>
+            <label className="text-slate-300 text-sm font-medium block mb-1.5">Hospital <span className="text-red-400">*</span></label>
+            <select
+              value={doctorForm.hospitalId}
+              onChange={e => setDoctorForm(f => ({ ...f, hospitalId: e.target.value }))}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary transition-all"
+              required
+            >
+              <option value="" className="bg-slate-800">Select hospital...</option>
+              {hospitals.data?.map(h => (
+                <option key={h.id} value={h.id} className="bg-slate-800">{h.name}</option>
+              ))}
+            </select>
+          </div>
+          <InputField label="Specialty" value={doctorForm.specialty} onChange={v => setDoctorForm(f => ({ ...f, specialty: v }))} placeholder="e.g. Cardiology, General Medicine" required />
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Consultation Fee (₹)" type="number" value={doctorForm.consultationFee} onChange={v => setDoctorForm(f => ({ ...f, consultationFee: v }))} placeholder="500" />
+            <InputField label="Tokens Per Session" type="number" value={doctorForm.tokensPerSession} onChange={v => setDoctorForm(f => ({ ...f, tokensPerSession: v }))} placeholder="20" />
+          </div>
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-300">
+            A unique sequential doctor code (e.g. DOC-00001) will be automatically generated for login.
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/30 disabled:opacity-60 disabled:transform-none flex items-center justify-center gap-2"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {saving ? "Creating..." : "Create Doctor"}
+          </button>
+        </form>
+      </Modal>
+
+      {/* ─── Doctor Created Success Modal ─── */}
+      <Modal open={!!newDoctorResult} onClose={() => setNewDoctorResult(null)} title="Doctor Created Successfully">
+        {newDoctorResult && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-white font-bold">{newDoctorResult.name}</p>
+                <p className="text-slate-400 text-sm">has been registered successfully</p>
+              </div>
+            </div>
+            <p className="text-slate-400 text-sm">Share these credentials with the doctor securely:</p>
+            <div className="space-y-3">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Login Code</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <code className="text-2xl font-bold text-primary font-mono tracking-widest">{newDoctorResult.loginCode}</code>
+                  <button onClick={() => copyToClipboard(newDoctorResult.loginCode)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Phone className="w-4 h-4 text-secondary" />
+                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Password (Phone Number)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <code className="text-lg font-bold text-white font-mono">{newDoctorResult.phone}</code>
+                  <button onClick={() => copyToClipboard(newDoctorResult.phone)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">The doctor should go to the Doctor Login page and enter these credentials.</p>
+            <button onClick={() => setNewDoctorResult(null)} className="w-full py-3 bg-primary text-white font-bold rounded-xl">
+              Done
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* ─── Add Hospital Modal ─── */}
+      <Modal open={showAddHospital} onClose={() => setShowAddHospital(false)} title="Add New Hospital / Clinic">
+        <form onSubmit={createHospital} className="space-y-4">
+          <InputField label="Hospital / Clinic Name" value={hospitalForm.name} onChange={v => setHospitalForm(f => ({ ...f, name: v }))} placeholder="e.g. City General Hospital" required />
+          <InputField label="City / Location" value={hospitalForm.location} onChange={v => setHospitalForm(f => ({ ...f, location: v }))} placeholder="e.g. Mumbai, Maharashtra" required />
+          <InputField label="Full Address" value={hospitalForm.address} onChange={v => setHospitalForm(f => ({ ...f, address: v }))} placeholder="Street address, landmark..." required />
+          <InputField label="Contact Phone" type="tel" value={hospitalForm.phone} onChange={v => setHospitalForm(f => ({ ...f, phone: v }))} placeholder="+91 22 1234 5678" />
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/30 disabled:opacity-60 disabled:transform-none flex items-center justify-center gap-2"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {saving ? "Creating..." : "Create Hospital"}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

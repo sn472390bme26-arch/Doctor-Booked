@@ -85,12 +85,23 @@ router.get("/:id/sessions", async (req, res) => {
     const doctorId = parseInt(req.params.id);
     const fromDate = req.query.fromDate as string | undefined;
     const toDate = req.query.toDate as string | undefined;
-    const sessions = await db.select().from(sessionsTable).where(eq(sessionsTable.doctorId, doctorId));
+    const sessions = await db.select().from(sessionsTable)
+      .where(eq(sessionsTable.doctorId, doctorId))
+      .orderBy(sessionsTable.date, sessionsTable.id);
     const filtered = sessions.filter(s => {
       if (s.isCancelled) return false;
       if (fromDate && s.date < fromDate) return false;
       if (toDate && s.date > toDate) return false;
       return true;
+    });
+
+    // Sort: active first, then upcoming, then closed; within same status by id DESC (newest first)
+    const statusPriority: Record<string, number> = { active: 0, upcoming: 1, closed: 2, cancelled: 3 };
+    filtered.sort((a, b) => {
+      const pA = statusPriority[a.status] ?? 99;
+      const pB = statusPriority[b.status] ?? 99;
+      if (pA !== pB) return pA - pB;
+      return b.id - a.id;
     });
 
     const doctor = await db.select().from(doctorsTable).where(eq(doctorsTable.id, doctorId)).limit(1);
