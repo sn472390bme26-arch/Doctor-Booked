@@ -58,6 +58,7 @@ router.post("/", authenticate, async (req: any, res) => {
     const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
     if (!session) return res.status(404).json({ error: "not_found", message: "Session not found" });
     if (session.isCancelled) return res.status(400).json({ error: "bad_request", message: "Session is cancelled" });
+    if (session.status === "closed") return res.status(400).json({ error: "bad_request", message: "Session has ended" });
     if (session.bookedTokens >= session.totalTokens) {
       return res.status(400).json({ error: "bad_request", message: "Session is full" });
     }
