@@ -15,7 +15,7 @@ export default function Payment() {
   // We need booking details, easiest is to get from bookings list since there's no single getBooking endpoint in schema
   const { data: bookings } = useGetMyBookings();
   const booking = bookings?.find(b => b.id === bookingId);
-  const amount = booking?.amountPaid || 500; // fallback if not loaded yet
+  const amount = (booking as any)?.consultationFee ?? booking?.amountPaid ?? 0;
 
   const payMutation = useProcessPayment();
 

@@ -28,6 +28,7 @@ router.get("/", authenticate, async (req: any, res) => {
       return {
         ...b,
         amountPaid: b.amountPaid ? parseFloat(b.amountPaid as string) : null,
+        consultationFee: doctor?.consultationFee ? parseFloat(doctor.consultationFee as string) : null,
         chiefComplaint: b.chiefComplaint || null,
         doctorName: doctor?.name || "Unknown",
         hospitalName: hospital?.name || "Unknown",
