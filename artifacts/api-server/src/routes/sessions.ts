@@ -26,6 +26,7 @@ router.get("/doctor/:doctorId", async (req, res) => {
 
     const filtered = sessions.filter(s => {
       if (s.isCancelled) return false;
+      if (s.status === "closed") return false;
       if (fromDate && s.date < fromDate) return false;
       if (toDate && s.date > toDate) return false;
       return true;
