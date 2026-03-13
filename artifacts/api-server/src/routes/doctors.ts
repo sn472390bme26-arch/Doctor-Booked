@@ -19,6 +19,10 @@ const updateProfileSchema = z.object({
   specialty: z.string().optional(),
   photoUrl: z.string().optional(),
   bio: z.string().optional(),
+  education: z.string().optional(),
+  experience: z.number().int().optional(),
+  languages: z.array(z.string()).optional(),
+  phone: z.string().optional(),
   consultationFee: z.number().optional(),
   tokensPerSession: z.number().int().optional(),
   sessionTypes: z.array(sessionTypeSchema).optional(),
@@ -61,6 +65,10 @@ router.put("/me", authenticate, async (req: any, res) => {
     if (data.specialty !== undefined) updateData.specialty = data.specialty;
     if (data.photoUrl !== undefined) updateData.photoUrl = data.photoUrl;
     if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.education !== undefined) updateData.education = data.education;
+    if (data.experience !== undefined) updateData.experience = data.experience;
+    if (data.languages !== undefined) updateData.languages = data.languages;
+    if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.consultationFee !== undefined) updateData.consultationFee = data.consultationFee.toString();
     if (data.tokensPerSession !== undefined) updateData.tokensPerSession = data.tokensPerSession;
     if (data.sessionTypes !== undefined) updateData.sessionTypes = data.sessionTypes;
