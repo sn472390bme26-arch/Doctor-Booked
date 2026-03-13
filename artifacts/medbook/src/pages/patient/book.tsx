@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetDoctorSessions, useCreateBooking } from "@workspace/api-client-react";
 import { format, addDays } from "date-fns";
-import { Calendar, Clock, ArrowRight, Activity, Info, FileText, X } from "lucide-react";
+import { Calendar, Clock, ArrowRight, Activity, Info, FileText, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,7 @@ export default function BookDoctor() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [chiefComplaint, setChiefComplaint] = useState("");
+  const [sessionEndedOpen, setSessionEndedOpen] = useState(false);
 
   const createBookingMutation = useCreateBooking();
 
@@ -42,8 +43,14 @@ export default function BookDoctor() {
         setChiefComplaint("");
         setLocation(`/patient/pay/${booking.id}`);
       },
-      onError: (err) => {
-        toast({ title: "Booking Failed", description: err.message || "Session might be full.", variant: "destructive" });
+      onError: (err: any) => {
+        const msg = err?.message || "";
+        if (msg.toLowerCase().includes("ended")) {
+          setIntakeOpen(false);
+          setSessionEndedOpen(true);
+        } else {
+          toast({ title: "Booking Failed", description: msg || "Session might be full.", variant: "destructive" });
+        }
       }
     });
   };
@@ -165,6 +172,44 @@ export default function BookDoctor() {
           </div>
         </div>
       )}
+
+      {/* ─── Session Ended Dialog ─── */}
+      <AnimatePresence>
+        {sessionEndedOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSessionEndedOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.88 }}
+              className="relative bg-card border border-border rounded-3xl shadow-2xl w-full max-w-sm p-8 z-10 text-center"
+            >
+              <button
+                onClick={() => setSessionEndedOpen(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+
+              <div className="flex items-center justify-center w-20 h-20 rounded-full bg-amber-100 text-amber-600 mx-auto mb-6">
+                <AlertTriangle className="w-10 h-10" />
+              </div>
+
+              <h2 className="text-2xl font-bold font-display mb-3">Session Has Ended</h2>
+              <p className="text-muted-foreground text-base leading-relaxed mb-8">
+                This session has already been closed by the doctor and is no longer accepting appointments.
+              </p>
+
+              <button
+                onClick={() => setSessionEndedOpen(false)}
+                className="w-full py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/25 hover:-translate-y-0.5 transition-all"
+              >
+                Go Back
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ─── Patient Intake Modal ─── */}
       <AnimatePresence>
