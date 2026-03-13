@@ -27,8 +27,9 @@ const queryClient = new QueryClient();
 
 // Protected Route Wrapper — uses Redirect (declarative) instead of setLocation (imperative during render)
 function ProtectedRoute({ component: Component, allowedRole }: { component: any, allowedRole?: string }) {
-  const { isAuthenticated, role, isLoading } = useAuth();
+  const { token, role, isLoading } = useAuth();
 
+  // Show spinner only during initial load (token exists but user not fetched yet)
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -37,10 +38,12 @@ function ProtectedRoute({ component: Component, allowedRole }: { component: any,
     );
   }
 
-  if (!isAuthenticated) {
+  // No token means definitely not logged in
+  if (!token) {
     return <Redirect to={allowedRole === 'doctor' ? "/doctor/login" : "/patient/login"} />;
   }
 
+  // Wrong role
   if (allowedRole && role !== allowedRole) {
     return <Redirect to="/" />;
   }

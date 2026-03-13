@@ -5,8 +5,12 @@ import { LogOut, User } from "lucide-react";
 import logoImg from "@assets/Final_logo_page-0001_1773317875013.jpg";
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { user, role, logout } = useAuth();
+  const { user, role, token, logout } = useAuth();
   const [,] = useLocation();
+
+  // Show nav as long as we have a token+role in storage, even while user is loading
+  const isLoggedIn = !!token && !!role;
+  const displayName = user?.name ?? (role === 'doctor' ? 'Doctor' : 'Patient');
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -25,7 +29,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </Link>
 
             <div className="flex items-center gap-4">
-              {user ? (
+              {isLoggedIn ? (
                 <>
                   <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground mr-4">
                     {role === 'patient' && (
@@ -44,8 +48,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
                   <div className="flex items-center gap-3 pl-4 border-l border-border/50">
                     <div className="hidden sm:flex flex-col items-end">
-                      <span className="text-sm font-semibold leading-none">{user.name}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
+                      <span className="text-sm font-semibold leading-none">{displayName}</span>
+                      <span className="text-xs text-muted-foreground capitalize">{role}</span>
                     </div>
                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                       <User className="h-5 w-5" />

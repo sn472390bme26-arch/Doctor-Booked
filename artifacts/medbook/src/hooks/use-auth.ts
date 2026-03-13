@@ -7,11 +7,15 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("medbook_token"));
   const [role, setRole] = useState<string | null>(() => localStorage.getItem("medbook_user"));
 
-  const { data: user, isLoading, isFetching, error, refetch } = useGetMe({
+  const { data: user, isLoading, isFetching, error } = useGetMe({
     query: {
       enabled: !!token,
-      retry: false,
-      staleTime: 30_000,
+      retry: 2,
+      retryDelay: 1000,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     } as any
   });
 
@@ -32,12 +36,14 @@ export function useAuth() {
 
   useEffect(() => {
     if (error && token) {
-      logout();
+      const status = (error as any)?.status;
+      if (status === 401) {
+        logout();
+      }
     }
   }, [error]);
 
-  // isLoading is true while we have a token but haven't confirmed user yet
-  const actuallyLoading = !!token && (isLoading || isFetching) && !user;
+  const actuallyLoading = !!token && isLoading && !user;
 
   return {
     user,
