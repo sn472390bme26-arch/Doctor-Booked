@@ -270,15 +270,17 @@ router.delete("/doctors/:id", adminAuth, async (req, res) => {
     if (!doctor) {
       return res.status(404).json({ error: "not_found", message: "Doctor not found" });
     }
-    // Delete all sessions + tokens belonging to this doctor
+    // Gather all session IDs for this doctor
     const doctorSessions = await db.select({ id: sessionsTable.id }).from(sessionsTable).where(eq(sessionsTable.doctorId, id));
     const sessionIds = doctorSessions.map(s => s.id);
     if (sessionIds.length > 0) {
+      // Delete tokens first (they reference sessions)
       await db.delete(tokensTable).where(inArray(tokensTable.sessionId, sessionIds));
+      // Delete bookings next (they reference sessions via session_id)
+      await db.delete(bookingsTable).where(inArray(bookingsTable.sessionId, sessionIds));
+      // Now safe to delete sessions
       await db.delete(sessionsTable).where(eq(sessionsTable.doctorId, id));
     }
-    // Delete bookings for this doctor
-    await db.delete(bookingsTable).where(eq(bookingsTable.doctorId, id));
     // Delete doctor record
     await db.delete(doctorsTable).where(eq(doctorsTable.id, id));
     // Delete associated user record (if role is "doctor")
